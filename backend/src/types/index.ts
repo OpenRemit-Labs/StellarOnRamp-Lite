@@ -15,6 +15,7 @@ export interface ConversionQuote {
   fee: number;               // fiat fee
   networkFee: string;        // XLM network fee
   expiresAt: string;         // ISO timestamp
+  sendAsset?: SupportedAsset; // present when source differs from destination asset (path payment)
 }
 
 export interface PaymentIntent {
@@ -30,6 +31,25 @@ export interface PaymentIntent {
   paymentInstructions?: PaymentInstructions;
   createdAt: string;
   updatedAt: string;
+  sendAsset?: SupportedAsset; // present when path payment is used
+}
+
+// Path payment types for cross-asset Stellar DEX conversions
+export interface PathPaymentParams {
+  sendAsset: SupportedAsset;
+  sendMax: string;
+  destination: string;
+  destAsset: SupportedAsset;
+  destAmount: string;
+  path?: SupportedAsset[];
+  memo?: string;
+  distributionSecret: string;
+}
+
+export interface PathPaymentResult {
+  txHash: string;
+  ledger: number;
+  path: SupportedAsset[];
 }
 
 export interface PaymentInstructions {
@@ -49,6 +69,9 @@ export interface StellarTransaction {
   ledger?: number;
   createdAt: string;
   confirmedAt?: string;
+  sendAsset?: SupportedAsset;
+  sendMax?: string;
+  pathUsed?: SupportedAsset[];
 }
 
 export interface WalletBalance {
