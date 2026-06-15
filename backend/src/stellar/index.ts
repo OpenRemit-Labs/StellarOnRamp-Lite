@@ -148,6 +148,39 @@ export async function sendPathPayment(params: PathPaymentParams): Promise<PathPa
 }
 
 /**
+ * Query Horizon's strict-receive path-finding endpoint to discover the best
+ * DEX route from `sourceAssets` to `destAsset` for a given `destAmount`.
+ * Returns the intermediate asset path and the estimated source amount needed.
+ * Falls back to an empty path (direct conversion) when no route is found.
+ */
+export async function findPaymentPath(params: {
+  sourceAssets: SupportedAsset[];
+  destAsset: SupportedAsset;
+  destAmount: string;
+}): Promise<{ path: SupportedAsset[]; sourceAmount: string }> {
+  const { sourceAssets, destAsset, destAmount } = params;
+
+  const result = await server
+    .strictReceivePaths(sourceAssets.map(getAsset), getAsset(destAsset), destAmount)
+    .call();
+
+  if (!result.records.length) {
+    return { path: [], sourceAmount: destAmount };
+  }
+
+  const best = result.records[0];
+  const intermediates = (best.path as Array<{ asset_type: string; asset_code?: string }>)
+    .map((a) => {
+      if (a.asset_type === 'native') return 'XLM' as SupportedAsset;
+      if (a.asset_code === 'USDC') return 'USDC' as SupportedAsset;
+      return null;
+    })
+    .filter((a): a is SupportedAsset => a !== null);
+
+  return { path: intermediates, sourceAmount: best.source_amount };
+}
+
+/**
  * Get transaction details from Horizon.
  */
 export async function getTransaction(txHash: string) {
