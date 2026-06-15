@@ -44,5 +44,11 @@ export async function initDb() {
     CREATE INDEX IF NOT EXISTS idx_payment_intents_status ON payment_intents(status);
     CREATE INDEX IF NOT EXISTS idx_stellar_tx_intent ON stellar_transactions(payment_intent_id);
     CREATE INDEX IF NOT EXISTS idx_stellar_tx_hash ON stellar_transactions(tx_hash);
+
+    ALTER TABLE payment_intents ADD COLUMN IF NOT EXISTS send_asset TEXT;
+
+    ALTER TABLE stellar_transactions ADD COLUMN IF NOT EXISTS send_asset TEXT;
+    ALTER TABLE stellar_transactions ADD COLUMN IF NOT EXISTS send_max TEXT;
+    ALTER TABLE stellar_transactions ADD COLUMN IF NOT EXISTS path_used JSONB;
   `);
 }
