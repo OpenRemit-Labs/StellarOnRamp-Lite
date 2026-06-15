@@ -1,5 +1,5 @@
 import * as StellarSdk from '@stellar/stellar-sdk';
-import { SupportedAsset, WalletBalance } from '../types';
+import { PathPaymentParams, PathPaymentResult, SupportedAsset, WalletBalance } from '../types';
 
 const NETWORK = process.env.STELLAR_NETWORK === 'mainnet' ? 'mainnet' : 'testnet';
 const HORIZON_URL =
@@ -102,6 +102,48 @@ export async function sendPayment(params: {
   return {
     txHash: result.hash,
     ledger: (result as unknown as { ledger: number }).ledger,
+  };
+}
+
+/**
+ * Build and submit a path payment transaction using the Stellar DEX.
+ * The recipient receives exactly `destAmount` of `destAsset`; the sender
+ * spends at most `sendMax` of `sendAsset`, with the DEX bridging the gap.
+ */
+export async function sendPathPayment(params: PathPaymentParams): Promise<PathPaymentResult> {
+  const { sendAsset, sendMax, destination, destAsset, destAmount, path = [], memo, distributionSecret } = params;
+
+  const keypair = StellarSdk.Keypair.fromSecret(distributionSecret);
+  const account = await server.loadAccount(keypair.publicKey());
+
+  const txBuilder = new StellarSdk.TransactionBuilder(account, {
+    fee: StellarSdk.BASE_FEE,
+    networkPassphrase,
+  })
+    .addOperation(
+      StellarSdk.Operation.pathPaymentStrictReceive({
+        sendAsset: getAsset(sendAsset),
+        sendMax,
+        destination,
+        destAsset: getAsset(destAsset),
+        destAmount,
+        path: path.map(getAsset),
+      })
+    )
+    .setTimeout(30);
+
+  if (memo) {
+    txBuilder.addMemo(StellarSdk.Memo.text(memo.slice(0, 28)));
+  }
+
+  const tx = txBuilder.build();
+  tx.sign(keypair);
+
+  const result = await server.submitTransaction(tx);
+  return {
+    txHash: result.hash,
+    ledger: (result as unknown as { ledger: number }).ledger,
+    path,
   };
 }
 
